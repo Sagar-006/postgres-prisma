@@ -2,41 +2,60 @@ import express from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
+import { signupSchema } from "./schemas";
+import { error } from "ajv/dist/vocabularies/applicator/dependencies";
+import { json } from "zod";
 
 const app = express();
 app.use(express.json());
-const client = new PrismaClient();
+const client = new PrismaClient(); 
 
 app.post("/signup", async (req: Request, res: Response) => {
-  const { username, password, age, city } = req.body;
+  
+  const result = signupSchema.safeParse(req.body);
 
-  const hashPassword = await bcrypt.hash(password, 10);
-
-  const user = await client.user.findUnique({
-    where: {
-      username: username,
-    },
-  });
-
-  if (user) {
-    res.status(400).json({
-      message: "User already exists!",
+  if(!result.success){
+    res.json({
+      message:"Please enter a valid credentials"
     });
+    return
   }
 
-  const newUser = await client.user.create({
-    data: {
-      username: username,
-      password: hashPassword,
-      age: age,
-      city: city,
-    },
-  });
+  const {username,password,age,city} = result.data;
 
-  res.status(201).json({
-    user: newUser,
-    message: "user signup successfully!",
-  });
+  try{
+    const existingUser = await client.user.findUnique({
+      where:{username},
+    })
+
+    if(!existingUser) {
+      res.status(400).json({
+        message:"User aleready exists!"
+      })
+    }
+
+    const hashPassword = await bcrypt.hash(password,10);
+
+    const newUser = await client.user.create({
+      data:{
+        username,
+        password:hashPassword,
+        age,
+        city,
+      },
+    })
+    res.status(201).json({
+      user:{
+        id:newUser.id,
+        username:newUser.username,
+
+      },
+      message:"User signup successfully!"
+    })
+  }
+  catch(e){
+    
+  }
 });
 
 app.post("/login", async (req: Request, res: Response) => {

@@ -15,7 +15,8 @@
     "bcrypt": "^6.0.0",
     "express": "^5.1.0",
     "prisma": "^6.10.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "zod": "^4.0.10"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2"

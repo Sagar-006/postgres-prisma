@@ -15,34 +15,47 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const client_1 = require("@prisma/client");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const schemas_1 = require("./schemas");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 const client = new client_1.PrismaClient();
 app.post("/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password, age, city } = req.body;
-    const hashPassword = yield bcrypt_1.default.hash(password, 10);
-    const user = yield client.user.findUnique({
-        where: {
-            username: username,
-        },
-    });
-    if (user) {
-        res.status(400).json({
-            message: "User already exists!",
+    const result = schemas_1.signupSchema.safeParse(req.body);
+    if (!result.success) {
+        res.json({
+            message: "Please enter a valid credentials"
+        });
+        return;
+    }
+    const { username, password, age, city } = result.data;
+    try {
+        const existingUser = yield client.user.findUnique({
+            where: { username },
+        });
+        if (!existingUser) {
+            res.status(400).json({
+                message: "User aleready exists!"
+            });
+        }
+        const hashPassword = yield bcrypt_1.default.hash(password, 10);
+        const newUser = yield client.user.create({
+            data: {
+                username,
+                password: hashPassword,
+                age,
+                city,
+            },
+        });
+        res.status(201).json({
+            user: {
+                id: newUser.id,
+                username: newUser.username,
+            },
+            message: "User signup successfully!"
         });
     }
-    const newUser = yield client.user.create({
-        data: {
-            username: username,
-            password: hashPassword,
-            age: age,
-            city: city,
-        },
-    });
-    res.status(201).json({
-        user: newUser,
-        message: "user signup successfully!",
-    });
+    catch (e) {
+    }
 }));
 app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
@@ -97,40 +110,3 @@ app.post("/todos", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     });
 }));
 app.listen(5000);
-// app.get("/user", async (req, res) => {
-//   const users = await client.user.findMany();
-//   res.json({
-//     users,
-//   });
-// });
-// interface idType {
-//     id:number
-// }
-// app.get("/todos/:id", async (req, res) => {
-//   const id = req.params.id ;
-//   const user = await client.user.findFirst({
-//     where: {
-//       id: parseInt(id),
-//     },
-//     select: {
-//       todos: true,
-//       username: true,
-//     },
-//   });
-//   res.json({
-//     user,
-//   });
-// });
-// app.listen(5000)
-// const createUser = async () => {
-//   const user = await client.user.findFirst({
-//     where: {
-//       id: 1,
-//     },
-//     include: {
-//       todos: true,
-//     },
-//   });
-//   console.log(user);
-// };
-// createUser();
